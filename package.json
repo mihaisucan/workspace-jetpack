@@ -1,0 +1,9 @@
+{
+    "name": "workspace", 
+    "license": "MPL 1.1/GPL 2.0/LGPL 2.1", 
+    "author": "Mihai Sucan <mihai.sucan@gmail.com>", 
+    "version": "0.1", 
+    "fullName": "Workspace", 
+    "id": "jid0-Ca8AOe37djGcWpWABPURyb9ByAw", 
+    "description": "a remake of the Mozilla Workspace extension by Robert Campbell"
+}
