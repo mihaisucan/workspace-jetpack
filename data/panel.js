@@ -36,12 +36,17 @@
  *
  * ***** END LICENSE BLOCK *****/
 
+const WORKSPACE_CONTEXT_CONTENT = 1;
+const WORKSPACE_CONTEXT_CHROME = 2;
+
 let Workspace = {
+  executionContext: WORKSPACE_CONTEXT_CONTENT,
+
   textbox: null,
 
   init: function WS_init() {
     this.textbox = document.getElementById("source-input");
-    console.log("init textbox " + this.textbox);
+    console.log("WS_init");
 
     let btnExecute = document.getElementById("execute");
     let btnInspect = document.getElementById("inspect");
@@ -54,18 +59,24 @@ let Workspace = {
     let contentContext = document.getElementById("content-context");
     let chromeContext = document.getElementById("chrome-context");
 
+    contentContext.checked = true;
+
     contentContext.addEventListener("change",
       this.changeContext.bind(this), false);
+
     chromeContext.addEventListener("change",
       this.changeContext.bind(this), false);
   },
 
   changeContext: function WS_changeContext(event) {
-    console.log("changeContext " + value + " " + event.target.value);
+    this.executionContext = parseInt(event.target.value);
+    console.log("changeContext " + this.executionContext);
   },
 
   execute: function WS_execute() {
-    console.log("execute " + this.textbox.value);
+    let selection = this.getSelectedText() || this.getTextboxValue();
+    this.evalForContext(selection);
+    this.deselect();
   },
 
   inspect: function WS_inspect() {
@@ -74,6 +85,32 @@ let Workspace = {
 
   print: function WS_print() {
     console.log("print " + this.textbox.value);
+  },
+
+  getTextboxValue: function WS_getTextboxValue() {
+    return this.textbox.value;
+  },
+
+  getSelectedText: function WS_getSelectedText() {
+    let text = this.textbox.value;
+    let selectionStart = this.textbox.selectionStart;
+    let selectionEnd = this.textbox.selectionEnd;
+    if (selectionStart != selectionEnd)
+      return text.substring(selectionStart, selectionEnd);
+
+    return "";
+  },
+
+  deselect: function WS_deselect() {
+    this.textbox.selectionEnd = this.textbox.selectionStart;
+  },
+
+  evalForContext: function WS_evaluateForContext(aString) {
+    postMessage({
+      action: "evalForContext",
+      context: this.executionContext,
+      string: aString
+    });
   },
 };
 
