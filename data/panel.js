@@ -40,6 +40,10 @@ const WORKSPACE_CONTEXT_CONTENT = 1;
 const WORKSPACE_CONTEXT_CHROME = 2;
 
 let Workspace = {
+  _callbacks: {},
+
+  _callId: 0,
+
   executionContext: WORKSPACE_CONTEXT_CONTENT,
 
   textbox: null,
@@ -66,6 +70,8 @@ let Workspace = {
 
     chromeContext.addEventListener("change",
       this.changeContext.bind(this), false);
+
+    on("message", this._onMessage.bind(this));
   },
 
   changeContext: function WS_changeContext(event) {
@@ -84,7 +90,35 @@ let Workspace = {
   },
 
   print: function WS_print() {
-    console.log("print " + this.textbox.value);
+    let selection = this.getSelectedText() || this.getTextboxValue();
+    console.log("print " + selection);
+
+    let start = this.textbox.selectionStart;
+    let end = this.textbox.selectionEnd;
+    if (start == end) {
+      end = this.textbox.value.length;
+    }
+    this.deselect();
+
+    this.evalForContext(selection, this._printCallback.bind(this, start, end));
+  },
+
+  _printCallback: function WS__printCallback(aStart, aEnd, aError, aResult) {
+    let result = (aError ?
+                  aError.errorMessage || aError.message || aError :
+                  aResult) + "";
+    if (!result) {
+      return;
+    }
+
+    console.log("_printCallback " + result);
+
+    let piece1 = this.textbox.value.slice(0, aEnd);
+    let piece2 = this.textbox.value.slice(aEnd + 1, this.textbox.value.length);
+    this.textbox.value = piece1 + "\n " + result + "\n" + piece2;
+
+    this.textbox.selectionStart = aEnd + 2;
+    this.textbox.selectionEnd = aEnd + 2 + result.length;
   },
 
   getTextboxValue: function WS_getTextboxValue() {
@@ -105,12 +139,61 @@ let Workspace = {
     this.textbox.selectionEnd = this.textbox.selectionStart;
   },
 
-  evalForContext: function WS_evaluateForContext(aString) {
-    postMessage({
+  evalForContext: function WS_evalForContext(aString, aCallback) {
+    let message = {
       action: "evalForContext",
       context: this.executionContext,
-      string: aString
-    });
+      string: aString,
+    };
+
+    if (aCallback) {
+      let id = ++this._callId;
+      this._callbacks[id] = aCallback;
+
+      message.meta = {callId: id};
+      message.sendResult = true;
+    }
+
+    console.log("panel evalForContext " + this.executionContext + " " + aString);
+
+    postMessage(message);
+  },
+
+  _onMessage: function WS__onMessage(aMessage) {
+    if (!aMessage || !aMessage.action) {
+      throw new Error("Workspace panel: received unknown message!");
+    }
+
+    console.log("panel _onMessage " + aMessage.action);
+
+    switch (aMessage.action) {
+      case "evalResultForContext":
+        this._evalResultForContext(aMessage);
+        break;
+
+      default:
+        throw new Error("Workspace panel: received unknown message with " +
+                        "action " + aMessage.action);
+    }
+  },
+
+  _evalResultForContext: function WS__evalResultForContext(aResult) {
+    if (!("result" in aResult) && !("error" in aResult) ||
+        !aResult.meta || !aResult.meta.callId) {
+      throw new Error("Workspace panel: received invalid evaluation result! " + aResult.result + " " + aResult.error);
+    }
+
+    let id = aResult.meta.callId;
+    console.log("panel _evalResultForContext " + id);
+
+    let callback = this._callbacks[id];
+    if (!callback) {
+      throw new Error("Workspace panel: received stale evaluation result. " +
+                      "Callback ID not found: " + id);
+    }
+
+    delete this._callbacks[id];
+    callback(aResult.error, aResult.result);
   },
 };
 
