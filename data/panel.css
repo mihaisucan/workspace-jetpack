@@ -1,0 +1,14 @@
+body {
+  font-family: sans-serif;
+}
+
+h1 {
+  font-size: 1.2em;
+}
+
+#source-input {
+  width: 98%;
+  height: 200px;
+}
+
+

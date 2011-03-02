@@ -50,7 +50,6 @@ let Workspace = {
 
   init: function WS_init() {
     this.textbox = document.getElementById("source-input");
-    console.log("WS_init");
 
     let btnExecute = document.getElementById("execute");
     let btnInspect = document.getElementById("inspect");
@@ -76,7 +75,6 @@ let Workspace = {
 
   changeContext: function WS_changeContext(event) {
     this.executionContext = parseInt(event.target.value);
-    console.log("changeContext " + this.executionContext);
   },
 
   execute: function WS_execute() {
@@ -86,12 +84,19 @@ let Workspace = {
   },
 
   inspect: function WS_inspect() {
-    console.log("inspect " + this.textbox.value);
+    let selection = this.getSelectedText() || this.getTextboxValue();
+
+    postMessage({
+      action: "inspectForContext",
+      context: this.executionContext,
+      string: selection,
+    });
+
+    this.deselect();
   },
 
   print: function WS_print() {
     let selection = this.getSelectedText() || this.getTextboxValue();
-    console.log("print " + selection);
 
     let start = this.textbox.selectionStart;
     let end = this.textbox.selectionEnd;
@@ -110,8 +115,6 @@ let Workspace = {
     if (!result) {
       return;
     }
-
-    console.log("_printCallback " + result);
 
     let piece1 = this.textbox.value.slice(0, aEnd);
     let piece2 = this.textbox.value.slice(aEnd + 1, this.textbox.value.length);
@@ -154,8 +157,6 @@ let Workspace = {
       message.sendResult = true;
     }
 
-    console.log("panel evalForContext " + this.executionContext + " " + aString);
-
     postMessage(message);
   },
 
@@ -163,8 +164,6 @@ let Workspace = {
     if (!aMessage || !aMessage.action) {
       throw new Error("Workspace panel: received unknown message!");
     }
-
-    console.log("panel _onMessage " + aMessage.action);
 
     switch (aMessage.action) {
       case "evalResultForContext":
@@ -184,7 +183,6 @@ let Workspace = {
     }
 
     let id = aResult.meta.callId;
-    console.log("panel _evalResultForContext " + id);
 
     let callback = this._callbacks[id];
     if (!callback) {
@@ -197,4 +195,4 @@ let Workspace = {
   },
 };
 
-window.addEventListener("DOMContentLoaded", Workspace.init.bind(Workspace), false);
+addEventListener("DOMContentLoaded", Workspace.init.bind(Workspace), false);
